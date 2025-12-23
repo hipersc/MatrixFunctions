@@ -1,2 +1,4 @@
 # MatrixFunctions
-Code devoted to matrix function computation
+
+Code related to matrix function computation
+
