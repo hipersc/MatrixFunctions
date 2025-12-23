@@ -1,2 +1,2 @@
-Code related to matrix exponential function by means of distinct methods
+Code related to matrix exponential function computation
 
