@@ -60,14 +60,14 @@ function [m, s, pA, nProd] = select_m_s_expm(A,poleval)
 % - nProd:   number of matrix products required by the function.
 
 if poleval==1
-    [m,s,pA,nProd]=select_m_s_expm_paterson_stockmeyer(A,1e-8);
+    [m,s,pA,nProd]=select_m_s_expm_ps(A,1e-8);
 else
-    [m,s,pA,nProd]=select_m_s_expm_sastre(A,1e-8);
+    [m,s,pA,nProd]=select_m_s_expm_opt15(A,1e-8);
 end
 end
 
 
-function [m, s, pA, nProd] = select_m_s_expm_paterson_stockmeyer(A,tol)
+function [m, s, pA, nProd] = select_m_s_expm_ps(A,tol)
 % Determines the polynomial order and the scaling parameter to compute the
 % exponential of matrix A by means of Taylor approximation of order 
 % m <= 16. The polynomial will be evaluated by means of Paterson-Stockmeyer 
@@ -139,7 +139,7 @@ if s>20
 end
 end
 
-function [m, s, pA, nProd] = select_m_s_expm_sastre(A,tol)
+function [m, s, pA, nProd] = select_m_s_expm_opt15(A,tol)
 % Determines the polynomial order and the scaling parameter to compute the
 % exponential of matrix A by means of Taylor approximation of order 
 % m <= 15. The polynomial will be evaluated by means of Sastre formulas. 
@@ -186,15 +186,12 @@ while i<=length(M) && fin==0
     if m==1
         error(1)=L(p) + 2*norm_pA(1);
         error(2)=L(p+1) + 3*norm_pA(1);
-    else        
+    elseif j*k==m % m=2, 4, 8
+        error(1)=L(p) + k*norm_pA(j) + norm_pA(1);
+        error(2)=L(p+1) + k*norm_pA(j) + norm_pA(2);
+    else % m=15
         error(1)=L(p) + k*norm_pA(j);
-        error(2)=L(p+1) + k*norm_pA(j);
-        if j*k==m 
-            error(1)=error(1) + norm_pA(1);
-            error(2)=error(2) + norm_pA(2);
-        else
-            error(2)=error(2) + norm_pA(1);
-        end
+        error(2)=L(p+1) + k*norm_pA(j) + norm_pA(1);
     end
     if error(1)<=tol && error(2)<=tol
         fin=1;
@@ -267,13 +264,13 @@ function p=coefs_expm(m,poleval)
 %            descending powers (Sastre).
 
 if poleval==1
-   p=coefs_expm_paterson_stockmeyer(m);
+   p=coefs_expm_ps(m);
 elseif poleval==2
-    p=coefs_expm_sastre(m);
+    p=coefs_expm_opt15(m);
 end
 end
 
-function p=coefs_expm_paterson_stockmeyer(m)
+function p=coefs_expm_ps(m)
 % Provides the approximation Taylor polynomial coefficients for the 
 % matrix exponential function to be evaluated by means of the Paterson-
 % Stockmeyer algorithm.
@@ -288,7 +285,7 @@ p=[1.0000000000000000e+00, 1.0000000000000000e+00, 5.0000000000000000e-01, 1.666
 p=p(1:m+1);
 end
 
-function c=coefs_expm_sastre(m)
+function c=coefs_expm_opt15(m)
 % Provides the approximation Taylor polynomial coefficients for the
 % matrix exponential function to be evaluated by means of the Sastre formulas.
 % Inputs:
@@ -332,15 +329,15 @@ function [E,nProd]=polyvalm(p,pA,poleval)
 
 if poleval==1
     % Polynomial evaluation by means of Paterson-Stockmeyer algorithm
-    [E,nProd]=polyvalm_paterson_stockmeyer(p,pA);
+    [E,nProd]=polyvalm_ps(p,pA);
 elseif poleval==2
     % Polynomial evaluation by means of Sastre formulas
-    [E,nProd]=polyvalm_sastre(p,pA);
+    [E,nProd]=polyvalm_opt15(p,pA);
 end
     
 end
 
-function [E,nProd]=polyvalm_paterson_stockmeyer(p,pA)
+function [E,nProd]=polyvalm_ps(p,pA)
 % Evaluates the polynomial E = p(1)*I + p(2)*A + p(3)*A^2 + ...+ p(m+1)*A^m 
 % efficiently by means of the Paterson-Stockmeyer algorithm.
 %
@@ -387,7 +384,7 @@ end
 
 end
 
-function [E,nProd]=polyvalm_sastre(c,pA)
+function [E,nProd]=polyvalm_opt15(c,pA)
 % Evaluates the polynomial efficiently by means of the Sastre formulas.    
 % 
 % Inputs:

@@ -210,9 +210,9 @@ def select_m_s_expm(A,poleval=2):
       - nProd:   number of matrix products required by the function.
     """
     if poleval==1:
-        m,s,pA,nProd=select_m_s_expm_paterson_stockmeyer(A,1e-8)
+        m,s,pA,nProd=select_m_s_expm_ps(A,1e-8)
     elif poleval==2:
-        m,s,pA,nProd=select_m_s_expm_sastre(A,1e-8)      
+        m,s,pA,nProd=select_m_s_expm_opt15(A,1e-8)      
     return m,s,pA,nProd
 
 
@@ -235,12 +235,12 @@ def select_m_s_series(A,poleval=2):
     """
 
     if poleval==1:
-        m,s,pA,nProd=select_m_s_series_paterson_stockmeyer(A,1e-8)
+        m,s,pA,nProd=select_m_s_series_ps(A,1e-8)
     elif poleval==2:
-        m,s,pA,nProd=select_m_s_series_sastre(A,1e-8)      
+        m,s,pA,nProd=select_m_s_series_opt15(A,1e-8)      
     return m,s,pA,nProd
 
-def select_m_s_expm_paterson_stockmeyer(A,tol=1e-8):
+def select_m_s_expm_ps(A,tol=1e-8):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=16. 
@@ -318,7 +318,7 @@ def select_m_s_expm_paterson_stockmeyer(A,tol=1e-8):
     return m,s,pA,nProd
 
 
-def select_m_s_expm_sastre(A,tol=1e-8):
+def select_m_s_expm_opt15(A,tol=1e-8):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=15+. 
@@ -376,14 +376,12 @@ def select_m_s_expm_sastre(A,tol=1e-8):
         if m==1:
             error[0]=L[p] + 2*norm_pA[0]
             error[1]=L[p+1]+ 3*norm_pA[0]
-        else:
+        elif j*k==m: # m = 2, 4, 8
+            error[0]=L[p] + k*norm_pA[j-1] + norm_pA[0]
+            error[1]=L[p+1] + k*norm_pA[j-1] + norm_pA[1]
+        else: # m = 15
             error[0]=L[p] + k*norm_pA[j-1]
-            error[1]=L[p+1] + k*norm_pA[j-1]
-            if j*k==m:
-                error[0]+= norm_pA[0]
-                error[1]+= norm_pA[1]
-            else: # m=15
-                error[1]+=norm_pA[0]
+            error[1]=L[p+1] + k*norm_pA[j-1] + norm_pA[0]
 
         if error[0]<=tol and error[1]<=tol:
             fin=True
@@ -399,7 +397,7 @@ def select_m_s_expm_sastre(A,tol=1e-8):
    
     return m,s,pA,nProd
 
-def select_m_s_series_paterson_stockmeyer(A,tol):
+def select_m_s_series_ps(A,tol):
     """
     Determines the polynomial order and the scaling parameter to compute the
     series of matrix A by means of Taylor approximation of order m<=16. The
@@ -467,7 +465,7 @@ def select_m_s_series_paterson_stockmeyer(A,tol):
     return m,s,pA,nProd
 
 
-def select_m_s_series_sastre(A,tol=1e-8):
+def select_m_s_series_opt15(A,tol=1e-8):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=64. 
@@ -525,14 +523,12 @@ def select_m_s_series_sastre(A,tol=1e-8):
         if m==1:
             error[0]=L[p] + 2*norm_pA[0]
             error[1]=L[p+1]+ 3*norm_pA[0]
-        else:
+        elif j*k==m: # m = 2, 4, 8
+            error[0]=L[p] + k*norm_pA[j-1] + norm_pA[0]
+            error[1]=L[p+1] + k*norm_pA[j-1] + norm_pA[1]
+        else: # m = 15
             error[0]=L[p] + k*norm_pA[j-1]
-            error[1]=L[p+1] + k*norm_pA[j-1]
-            if j*k==m:
-                error[0]+= norm_pA[0]
-                error[1]+= norm_pA[1]
-            else: # m=15
-                error[1]+=norm_pA[0]
+            error[1]=L[p+1] + k*norm_pA[j-1] + norm_pA[0]
 
         if error[0]<=tol and error[1]<=tol:
             fin=True
@@ -628,12 +624,12 @@ def coefs_expm(m,poleval=2):
     """
 
     if poleval==1:
-        p=coefs_expm_paterson_stockmeyer(m)
+        p=coefs_expm_ps(m)
     else:
-        p=coefs_expm_sastre(m)
+        p=coefs_expm_opt15(m)
     return p
 
-def coefs_expm_paterson_stockmeyer(m):  
+def coefs_expm_ps(m):  
     """
     Provides the approximation Taylor polynomial coefficients for the 
     matrix exponential function to be evaluated by means of the Paterson-
@@ -649,7 +645,7 @@ def coefs_expm_paterson_stockmeyer(m):
     p=p[:m+1]
     return p
 
-def coefs_expm_sastre(m):    
+def coefs_expm_opt15(m):    
     """
     Provides the approximation Taylor polynomial coefficients for the 
     matrix exponential function to be evaluated by means of the Sastre formulas.
@@ -691,12 +687,12 @@ def coefs_series(m,poleval=2):
     """
 
     if poleval==1:
-        p=coefs_series_paterson_stockmeyer(m)
+        p=coefs_series_ps(m)
     elif poleval==2:
-        p=coefs_series_sastre(m)
+        p=coefs_series_opt15(m)
     return p
 
-def coefs_series_paterson_stockmeyer(m):  
+def coefs_series_ps(m):  
     """
     Provides the polynomial coefficients for the matrix series 
     sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!} to be evaluated by means of the 
@@ -711,7 +707,7 @@ def coefs_series_paterson_stockmeyer(m):
     p=p[:m+1]
     return p
 
-def coefs_series_sastre(m):
+def coefs_series_opt15(m):
     """
     Provides the polynomial coefficients for the matrix series 
     sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!} to be evaluated by means of the 
@@ -756,12 +752,12 @@ def polyvalm(p,pA,poleval=2):
     """    
 
     if poleval==1:
-        E,nProd=polyvalm_paterson_stockmeyer(p,pA)
+        E,nProd=polyvalm_ps(p,pA)
     else:
-        E,nProd=polyvalm_sastre(p,pA)
+        E,nProd=polyvalm_opt15(p,pA)
     return E,nProd
 
-def polyvalm_paterson_stockmeyer(p,pA):
+def polyvalm_ps(p,pA):
     """
     Evaluates the polynomial E = p[0]*I + p[1]*A + p[2]*A^2 + ...+ p[m]*A^m 
     efficiently by means of the Paterson-Stockmeyer algorithm.    
@@ -804,7 +800,7 @@ def polyvalm_paterson_stockmeyer(p,pA):
             nProd+=1
     return E,nProd
 
-def polyvalm_sastre(c,pA):    
+def polyvalm_opt15(c,pA):    
     """
     Evaluates the polynomial efficiently by means of the Sastre formulas.    
     
