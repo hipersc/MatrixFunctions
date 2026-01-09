@@ -1,4 +1,4 @@
-function [E,m,s,nProd]=expm_flow_sastre(A)
+function [E,m,s,nProd]=expm_flow_opt15(A)
 % Computes the matrix exponential of A using the scaling and squaring
 % algorithm and the Taylor polynomial approximation. Polynomials are
 % efficiently evaluated by means of Sastre formulas. 

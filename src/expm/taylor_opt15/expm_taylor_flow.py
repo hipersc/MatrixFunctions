@@ -26,7 +26,7 @@ def expm_flow_ps(A):
     #return E,m,s,nProd
     return E
 
-def expm_flow_sastre(A):
+def expm_flow_opt15(A):
 #def expm(A):    
     """
     Computes the matrix exponential of A using the scaling and squaring 
@@ -123,8 +123,8 @@ def series_flow_ps(A):
     return S
     
 
-#def series_flow_sastre(A):
-def series(A):
+def series_flow_opt15(A):
+#def series(A):
     """
     Computes the matrix series sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!}. 
     Polynomials are efficiently evaluated by means of the Sastre formulas. 
