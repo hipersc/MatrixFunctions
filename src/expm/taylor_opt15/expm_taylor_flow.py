@@ -1,58 +1,60 @@
 import torch
 
-def expm_flow_ps(A):    
-#def expm(A):        
+def expm_flow_ps(A,tol=1e-8):    
+#def expm(A,tol=1e-8):        
     """
     Computes the matrix exponential of A using the scaling and squaring 
     algorithm and the Taylor polynomial approximation. Polynomials are
     efficiently evaluated by means of the Paterson-Stockmeyer.
     
     Inputs:
-      - A:       input matrix.
+      - A:     input matrix.
+      - tol:   tolerance.
     
     Outputs: 
-      - E:       exponential of matrix A.
-      - m:       approximation polynomial order used.
-      - s:       scaling parameter.
-      - nProd:   number of matrix products required by the function.         
+      - E:     exponential of matrix A.
+      - m:     approximation polynomial order used.
+      - s:     scaling parameter.
+      - nProd: number of matrix products required by the function.         
      
     Group of High Performance Scientific Computation (HiPerSC)
     Universitat Politècnica de València (Spain)
     http://hipersc.blogs.upv.es
     """
     
-    E,m,s,nProd=expm_taylor_flow(A,1)
+    E,m,s,nProd=expm_taylor_flow(A,tol,1)
     
     #return E,m,s,nProd
     return E
 
-def expm_flow_opt15(A):
-#def expm(A):    
+def expm_flow_opt15(A,tol=1e-8):
+#def expm(A,tol=1e-8):    
     """
     Computes the matrix exponential of A using the scaling and squaring 
     algorithm and the Taylor polynomial approximation. Polynomials are
     efficiently evaluated by means of Sastre formulas. 
     
     Inputs:
-      - A:       input matrix.
+      - A:     input matrix.
+      - tol:   tolerance.      
     
     Outputs: 
-      - E:       exponential of matrix A.
-      - m:       approximation polynomial order used.
-      - s:       scaling parameter.
-      - nProd:   number of matrix products required by the function.         
+      - E:     exponential of matrix A.
+      - m:     approximation polynomial order used.
+      - s:     scaling parameter.
+      - nProd: number of matrix products required by the function.         
      
     Group of High Performance Scientific Computation (HiPerSC)
     Universitat Politècnica de València (Spain)
     http://hipersc.blogs.upv.es
     """
     
-    E,m,s,nProd=expm_taylor_flow(A,2)
+    E,m,s,nProd=expm_taylor_flow(A,tol,2)
     
     #return E,m,s,nProd
     return E
 
-def expm_taylor_flow(A,poleval=2):    
+def expm_taylor_flow(A,tol,poleval=2):    
     """
     Computes the matrix exponential of A using the scaling and squaring 
     algorithm and the Taylor polynomial approximation. Polynomials are
@@ -61,7 +63,7 @@ def expm_taylor_flow(A,poleval=2):
     
     Inputs:
       - A:       input matrix.
-      - metms:   fixed (1) or variable (2) tolerance.
+      - tol:     tolerance.
       - poleval: formulas to apply in the polynomial evaluation: 
                  Paterson-Stockmeyer (1) or Sastre (2).
     
@@ -77,7 +79,7 @@ def expm_taylor_flow(A,poleval=2):
     """
     
     # Select m and s values
-    m,s,pA,nProd_ms=select_m_s_expm(A,poleval)
+    m,s,pA,nProd_ms=select_m_s_expm(A,tol,poleval)
     
     # Scaling technique
     scaling(pA,s)
@@ -95,8 +97,8 @@ def expm_taylor_flow(A,poleval=2):
     nProd=nProd_ms+nProd_eval+nProd_sq
     return E,m,s,nProd
 
-def series_flow_ps(A):
-#def series(A):   
+def series_flow_ps(A,tol=1e-8):
+#def series(A,tol=1e-8):   
     """
     Computes the matrix series sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!}. 
     Polynomials are efficiently evaluated by means of the Paterson-Stockmeyer
@@ -104,6 +106,7 @@ def series_flow_ps(A):
     
     Inputs:
       - A:       input matrix.
+      - tol:     tolerance.
       - poleval: formulas to apply in the polynomial evaluation: 
                  Paterson-Stockmeyer (1) or Sastre (2).
     
@@ -118,19 +121,20 @@ def series_flow_ps(A):
     http://hipersc.blogs.upv.es
     """
     
-    S,m,s,nProd=series_taylor_flow(A,1)
+    S,m,s,nProd=series_taylor_flow(A,tol,1)
     #return S,m,s,nProd
     return S
     
 
-def series_flow_opt15(A):
-#def series(A):
+def series_flow_opt15(A,tol=1e-8):
+#def series(A,tol=1e-8):
     """
     Computes the matrix series sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!}. 
     Polynomials are efficiently evaluated by means of the Sastre formulas. 
     
     Inputs:
       - A:       input matrix.
+      - tol:     tolerance.
       - poleval: formulas to apply in the polynomial evaluation: 
                  Paterson-Stockmeyer (1) or Sastre (2).
     
@@ -145,11 +149,11 @@ def series_flow_opt15(A):
     http://hipersc.blogs.upv.es
     """
     
-    S,m,s,nProd=series_taylor_flow(A,2)
+    S,m,s,nProd=series_taylor_flow(A,tol,2)
     #return S,m,s,nProd
     return S
 
-def series_taylor_flow(A,poleval=2):    
+def series_taylor_flow(A,tol,poleval=2):    
     """
     Computes the matrix series sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!}. 
     Polynomials are efficiently evaluated by means of the Paterson-Stockmeyer
@@ -157,6 +161,7 @@ def series_taylor_flow(A,poleval=2):
     
     Inputs:
       - A:       input matrix.
+      - tol:     tolerance.
       - poleval: formulas to apply in the polynomial evaluation: 
                  Paterson-Stockmeyer (1) or Sastre (2).
     
@@ -172,7 +177,7 @@ def series_taylor_flow(A,poleval=2):
     """    
     
     # Select m and s values
-    m,s,pA,nProd_ms=select_m_s_series(A,poleval)
+    m,s,pA,nProd_ms=select_m_s_series(A,tol,poleval)
     
     # Scaling technique
     scaling(pA,s)
@@ -191,7 +196,7 @@ def series_taylor_flow(A,poleval=2):
     
     return S,m,s,nProd
 
-def select_m_s_expm(A,poleval=2):
+def select_m_s_expm(A,tol,poleval=2):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=16,
@@ -199,6 +204,7 @@ def select_m_s_expm(A,poleval=2):
     
     Inputs:
       - A:       input matrix.
+      - tol:     tolerance.
       - poleval: formulas to apply in the polynomial evaluation: 
                  Paterson-Stockmeyer (1) or Sastre (2).
   
@@ -210,19 +216,20 @@ def select_m_s_expm(A,poleval=2):
       - nProd:   number of matrix products required by the function.
     """
     if poleval==1:
-        m,s,pA,nProd=select_m_s_expm_ps(A,1e-8)
+        m,s,pA,nProd=select_m_s_expm_ps(A,tol)
     elif poleval==2:
-        m,s,pA,nProd=select_m_s_expm_opt15(A,1e-8)      
+        m,s,pA,nProd=select_m_s_expm_opt15(A,tol)      
     return m,s,pA,nProd
 
 
-def select_m_s_series(A,poleval=2):
+def select_m_s_series(A,tol,poleval=2):
     """
     Determines the polynomial order and the scaling parameter to compute the
     matrix series sum_{k=0}^{infty}\frac{x^{k}}{(k+1)!}.
     
     Inputs:
       - A:       input matrix.
+      - tol:     tolerance.
       - poleval: formulas to apply in the polynomial evaluation: 
                  Paterson-Stockmeyer (1) or Sastre (2).
   
@@ -235,12 +242,12 @@ def select_m_s_series(A,poleval=2):
     """
 
     if poleval==1:
-        m,s,pA,nProd=select_m_s_series_ps(A,1e-8)
+        m,s,pA,nProd=select_m_s_series_ps(A,tol)
     elif poleval==2:
-        m,s,pA,nProd=select_m_s_series_opt15(A,1e-8)      
+        m,s,pA,nProd=select_m_s_series_opt15(A,tol)      
     return m,s,pA,nProd
 
-def select_m_s_expm_ps(A,tol=1e-8):
+def select_m_s_expm_ps(A,tol):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=16. 
@@ -318,7 +325,7 @@ def select_m_s_expm_ps(A,tol=1e-8):
     return m,s,pA,nProd
 
 
-def select_m_s_expm_opt15(A,tol=1e-8):
+def select_m_s_expm_opt15(A,tol):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=15+. 
@@ -465,7 +472,7 @@ def select_m_s_series_ps(A,tol):
     return m,s,pA,nProd
 
 
-def select_m_s_series_opt15(A,tol=1e-8):
+def select_m_s_series_opt15(A,tol):
     """
     Determines the polynomial order and the scaling parameter to compute the
     exponential of matrix A by means of Taylor approximation of order m<=64. 
@@ -685,7 +692,9 @@ def coefs_series(m,poleval=2):
                 polynomial ordered in ascending (Paterson-Stockmeyer) or 
                 descending (Sastre) powers.
     """
-
+    if m>15:
+        poleval=1
+        
     if poleval==1:
         p=coefs_series_ps(m)
     elif poleval==2:
@@ -730,7 +739,7 @@ def coefs_series_opt15(m):
     elif m==8:
         c=[1.660039735186658e-03, 7.470178808339960e-03, 2.709974334395560e-02, 4.500782732024826e-01, 5.880731295195394e-02, 2.034592904871945, 1.666666666666667e-01, 5.000000000000000e-01, 1]
     elif m==15:
-        c=[1.999637069327334e-04, 1.494400064180480e-03, -4.364865621286775e-03, 2.294130909981213e-01, 1.868111448270906e-02, 3.650752775284885, 2.113847295209054e-02, 7.709174196270302e-02, 1.005952341579399, 3.134311599789341, -6.535520701550694e-02, 5.711871755550578, -1.928484398466562e+01, 1.116706435878065e-01, 5.000000000000000e-01, 1]
+        c=[1.999637069327334e-04, 1.494400064180480e-03, -4.364865621286775e-03, 2.294130909981213e-01, 1.868111448270906e-02, 3.650752775284885, 2.113847295209054e-02, 7.709174196270302e-02, 1.005952341579399, -3.134311599789341, -6.535520701550694e-02, 5.711871755550578, -1.928484398466562e+01, 1.116706435878065e-01, 5.000000000000000e-01, 1]
     return c
 
 def polyvalm(p,pA,poleval=2):
@@ -750,7 +759,10 @@ def polyvalm(p,pA,poleval=2):
       - E:      polynomial evaluation result.
       - nProd:  number of matrix products required by the function.  
     """    
-
+    m=len(p)-1
+    if m>15:
+        poleval=1
+        
     if poleval==1:
         E,nProd=polyvalm_ps(p,pA)
     else:

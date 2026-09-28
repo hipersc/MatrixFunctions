@@ -1,11 +1,12 @@
-function [E,m,s,nProd]=expm_taylor_flow(A,poleval)
+function [E,m,s,nProd]=expm_taylor_flow(A,tol,poleval)
 % Computes the matrix exponential of A using the scaling and squaring
 % algorithm and the Taylor polynomial approximation. Polynomials are
 % efficiently evaluated by means of Paterson-Stockmeyer algorithm or
-% Sastre formulas. Accuracy is fixed to 1e-8.
+% Sastre formulas.
 %
 % Inputs:
 % - A:       input matrix.
+% - tol:     tolerance.
 % - poleval: formulas to apply in the polynomial evaluation: 
 %            Paterson-Stockmeyer (1) or Sastre (2).
 %
@@ -19,12 +20,12 @@ function [E,m,s,nProd]=expm_taylor_flow(A,poleval)
 % Universitat Politècnica de València (Spain)
 % http://hipersc.blogs.upv.es
 
-if nargin<2
+if nargin<3
     poleval=2;
 end
 
 % Select m and s values
-[m,s,pA,nProd_ms]=select_m_s_expm(A,poleval);
+[m,s,pA,nProd_ms]=select_m_s_expm(A,tol,poleval);
 
 % Scaling technique
 pA=scaling(pA,s);
@@ -43,12 +44,13 @@ nProd=nProd_ms+nProd_eval+nProd_sq;
 
 end
 
-function [m, s, pA, nProd] = select_m_s_expm(A,poleval)
+function [m, s, pA, nProd] = select_m_s_expm(A,tol,poleval)
 % Determines the polynomial order and the scaling parameter to compute the
 % exponential of matrix A by means of Taylor approximation of order m<=16.
 %
 % Inputs:
 % - A:       input matrix.
+% - tol:     tolerance.
 % - poleval: formulas to apply in the polynomial evaluation: 
 %            Paterson-Stockmeyer (1) or Sastre (2).
 % 
@@ -60,9 +62,9 @@ function [m, s, pA, nProd] = select_m_s_expm(A,poleval)
 % - nProd:   number of matrix products required by the function.
 
 if poleval==1
-    [m,s,pA,nProd]=select_m_s_expm_ps(A,1e-8);
+    [m,s,pA,nProd]=select_m_s_expm_ps(A,tol);
 else
-    [m,s,pA,nProd]=select_m_s_expm_opt15(A,1e-8);
+    [m,s,pA,nProd]=select_m_s_expm_opt15(A,tol);
 end
 end
 
