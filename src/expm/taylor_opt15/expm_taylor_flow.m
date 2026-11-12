@@ -136,8 +136,8 @@ if fin==0
         end
     end
 end
-if s>20
-    s=20;
+if s>30
+    s=30;
 end
 end
 
@@ -210,8 +210,8 @@ if fin==0
         end
     end
 end
-if s>20
-    s=20;
+if s>30
+    s=30;
 end
 end
 

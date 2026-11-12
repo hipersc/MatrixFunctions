@@ -24,8 +24,8 @@ def expm_flow_ps(A,tol=1e-8):
     
     E,m,s,nProd=expm_taylor_flow(A,tol,1)
     
-    #return E,m,s,nProd
-    return E
+    return E,m,s,nProd
+    #return E
 
 def expm_flow_opt15(A,tol=1e-8):
 #def expm(A,tol=1e-8):    
@@ -51,8 +51,8 @@ def expm_flow_opt15(A,tol=1e-8):
     
     E,m,s,nProd=expm_taylor_flow(A,tol,2)
     
-    #return E,m,s,nProd
-    return E
+    return E,m,s,nProd
+    #return E
 
 def expm_taylor_flow(A,tol,poleval=2):    
     """
@@ -122,8 +122,8 @@ def series_flow_ps(A,tol=1e-8):
     """
     
     S,m,s,nProd=series_taylor_flow(A,tol,1)
-    #return S,m,s,nProd
-    return S
+    return S,m,s,nProd
+    #return S
     
 
 def series_flow_opt15(A,tol=1e-8):
@@ -150,8 +150,8 @@ def series_flow_opt15(A,tol=1e-8):
     """
     
     S,m,s,nProd=series_taylor_flow(A,tol,2)
-    #return S,m,s,nProd
-    return S
+    return S,m,s,nProd
+    #return S
 
 def series_taylor_flow(A,tol,poleval=2):    
     """
@@ -319,8 +319,8 @@ def select_m_s_expm_ps(A,tol):
             s1=torch.math.ceil(aux/(m+i+1))
             if s1>s:
                 s=s1
-    if s>20:
-       s=20
+    if s>30:
+       s=30
     
     return m,s,pA,nProd
 
@@ -401,7 +401,9 @@ def select_m_s_expm_opt15(A,tol):
             s1=torch.math.ceil(aux/(m+i+1))
             if s1>s:
                 s=s1
-   
+    if s>30:
+       s=30
+        
     return m,s,pA,nProd
 
 def select_m_s_series_ps(A,tol):
@@ -769,10 +771,11 @@ def polyvalm(p,pA,poleval=2):
         E,nProd=polyvalm_opt15(p,pA)
     return E,nProd
 
-def polyvalm_ps(p,pA):
+def polyvalm_ps(p, pA):
     """
     Evaluates the polynomial E = p[0]*I + p[1]*A + p[2]*A^2 + ...+ p[m]*A^m 
-    efficiently by means of the Paterson-Stockmeyer algorithm.    
+    efficiently by means of the Paterson-Stockmeyer algorithm. It uses in-line
+    operations.
     
     Inputs:
       - p:     vector of length m+1 with the polynomial coefficients in 
@@ -784,37 +787,66 @@ def polyvalm_ps(p,pA):
       - nProd: number of matrix products required by the function.  
     """
     
-    n=pA[0].size(-1)
-    I=torch.eye(pA[0].size(-1),device=pA[0].device)
-    m=len(p)-1
-    nProd=0
-    c=m 
-    q=len(pA)
-    k=torch.math.ceil(m/q)
-    mIdeal=q*k
-    q=q-1
-    if m==0:
-        E=p[0]*I
-    else:
-        E=torch.zeros((n,n),device=pA[0].device) 
-    for j in range(k,0,-1):
+    A = pA[0] # Alias
+    m = len(p) - 1
+    q = len(pA)
+    nProd = 0
+
+    if m == 0:
+        #E = p[0]*I
+        E = torch.zeros_like(A)
+        add_identity_(E, p[0])
+        return E, nProd
+
+    k = torch.math.ceil(m / q) 
+    mIdeal = q * k
+    q -= 1
+    Aq = pA[q]
+    c = m
+    E = None
+
+    for j in range(k, 0, -1):
         if j==k:
-            inic=q-mIdeal+m
+            inic = q-mIdeal+m
         else:
-            inic=q-1
-        for i in range(inic,-1,-1):
-            E=E+p[c]*pA[i]
-            c=c-1
-        E=E+p[c]*I
-        c=c-1;
-        if j!=1:
-            E=torch.matmul(E,pA[q])
-            nProd+=1
-    return E,nProd
+            inic = q-1
+        for i in range(inic, -1, -1):
+            # E +=  pA[i]*p[c] 
+            if E is None:
+                E = pA[i].mul(p[c])              
+            else:
+                E.add_(pA[i], alpha=p[c])        
+            c -= 1
+
+        # E = E+p[c]*I   
+        add_identity_(E, p[c])
+        if j != 1:
+            # E=E*pA[q]
+            E = torch.matmul(E, Aq)
+            nProd += 1
+        c -= 1        
+            
+    return E, nProd
+
+def add_identity_(E, alpha=1):
+    """
+    Adds one identity matrix multiplied by a scalar to another. It uses
+    in-line operations.
+    
+    Input:
+      - E:     Matrix.
+      - alpha: Value that multiplies the identity matrix.
+      
+    Output: 
+      - E:     Matrix such as E += alpha*I   
+    """
+    #E += alpha*I, modify just the diagonal (without generating a identity matrix)
+    E.diagonal(dim1=-2, dim2=-1).add_(alpha)
 
 def polyvalm_opt15(c,pA):    
     """
-    Evaluates the polynomial efficiently by means of the Sastre formulas.    
+    Evaluates the polynomial efficiently by means of the Sastre formulas .
+    It uses in-place operations.
     
     Inputs:
       - c:     vector of m+1 componentes with the coefficients in descending 
@@ -825,27 +857,85 @@ def polyvalm_opt15(c,pA):
       - E:     polynomial evaluation result.
       - nProd: number of matrix products required by the function.  
     """ 
-    m=len(c)-1
-    E=torch.eye(pA[0].size(-1),device=pA[0].device)
-    if m==0:
-        nProd=0
-    elif m==1:
-        E=c[1]*pA[0]+E
-        nProd=0
-    elif m==2:
-        E=c[2]*pA[1]+c[1]*pA[0]+E
-        nProd=0
-    elif m==4:
-        E=torch.matmul(((pA[1]*c[4]+pA[0])*c[3]+E),pA[1]*c[2])+pA[0]*c[1]+E
-        nProd=1
-    elif m==8:
-        y0s=torch.matmul(pA[1],(c[0]*pA[1]+c[1]*pA[0]))
-        E=torch.matmul(y0s+c[2]*pA[1]+c[3]*pA[0],y0s+c[4]*pA[1])+c[5]*y0s+c[6]*pA[1]+c[7]*pA[0]+c[8]*E
-        nProd=2
-    elif m==15:
-        y0s=torch.matmul(pA[1],(c[0]*pA[1]+c[1]*pA[0]))
-        y1s=torch.matmul(y0s+c[2]*pA[1]+c[3]*pA[0],y0s+c[4]*pA[1])+c[5]*y0s+c[6]*pA[1]
-        E=torch.matmul(y1s+c[7]*pA[1]+c[8]*pA[0],y1s+c[9]*y0s+c[10]*pA[0])+c[11]*y1s+c[12]*y0s+c[13]*pA[1]+c[14]*pA[0]+c[15]*E
-        nProd=3        
-    return E,nProd
-                        
+    m = len(c) - 1
+    # Alias
+    A = pA[0]
+    if m>=2:
+        A2 = pA[1]
+        
+    if m == 0:
+        E = torch.eye(A.size(-1), dtype=A.dtype, device=A.device).expand_as(A).clone()
+        nProd = 0
+
+    elif m == 1: 
+        # E = c1*A + I
+        E = A.mul(c[1])
+        add_identity_(E)
+        nProd = 0
+
+    elif m == 2: 
+        # E = c2*A^2 + c1*A + I
+        E = A2.mul(c[2]).add_(A, alpha=c[1])
+        add_identity_(E)
+        nProd = 0
+
+    elif m == 4: 
+        # E = ((c4*A^2 + A)*c3 + I)(c2*A^2) + c1*A + I
+        ## T = ((c4*A^2 + A)*c3 + I)
+        T = A2.mul(c[4]).add_(A).mul_(c[3])
+        add_identity_(T)
+        
+        ## E = T*(c2*A^2) + c1*A + I
+        E = torch.matmul(T, A2).mul_(c[2]).add_(A, alpha=c[1])
+        add_identity_(E)
+        nProd = 1
+        
+    elif m == 8:
+        # y0s = A^2*(c[0]*A^2+c[1]*A)
+        S = A2.mul(c[0]).add_(A, alpha=c[1])
+        y0s = torch.matmul(A2, S)
+        
+        # E = (y0s+c[2]*A^2+c[3]*A)*(y0s+c[4]*A^2) + c[5]*y0s+c[6]*A^2+c[7]*A+c[8]*I
+        ## L = y0s+c[2]*A^2+c[3]*A
+        L = y0s.add(A2, alpha=c[2]).add_(A, alpha=c[3])
+        ## R = y0s+c[4]*A^2
+        R = y0s.add(A2, alpha=c[4])        
+
+        ## E = L*R + c[5]*y0s+c[6]*A^2+c[7]*A+c[8]*E
+        ## E = L*R
+        E = torch.matmul(L, R)
+        ## E = E + c[5]*y0s+c[6]*A^2+c[7]*A+c[8]*E
+        E.add_(y0s, alpha=c[5]).add_(A2, alpha=c[6]).add_(A, alpha=c[7])
+        add_identity_(E, c[8])        
+        nProd = 2
+        
+    elif m == 15:
+        # y0s = A^2*(c[0]*A^2+c[1]*A)
+        S = A2.mul(c[0]).add_(A, alpha=c[1])
+        y0s = torch.matmul(A2, S)
+
+        # y1s = (y0s+c[2]*A^2+c[3]*A)*(y0s+c[4]*A^2) + c[5]*y0s+c[6]*A^2
+        ## L = y0s+c[2]*A^2+c[3]*A
+        L = y0s.add(A2, alpha=c[2]).add_(A, alpha=c[3])
+        ## R = y0s+c[4]*A^2
+        R = y0s.add(A2, alpha=c[4])
+     
+        ## y1s = L*R + c[5]*y0s+c[6]*A^2
+        y1s = torch.matmul(L, R).add_(y0s, alpha=c[5]).add_(A2, alpha=c[6])
+ 
+        # E=(y1s+c[7]*A^2+c[8]*A)*(y1s+c[9]*y0s+c[10]*A) + c[11]*y1s+c[12]*y0s+c[13]*A^2+c[14]*A+c[15]*I
+        ## L = y1s+c[7]*A^2+c[8]*A
+        L = y1s.add(A2, alpha=c[7]).add_(A, alpha=c[8])
+        ## R = y1s+c[9]*y0s+c[10]*A
+        R = y1s.add(y0s, alpha=c[9]).add_(A, alpha=c[10])
+     
+        ## E = L*R + c[11]*y1s+c[12]*y0s+c[13]*A^2+c[14]*A+c[15]*I        
+        ## E = L*R
+        E = torch.matmul(L, R)
+        ## E = E + c[11]*y1s+c[12]*y0s+c[13]*A^2+c[14]*A+c[15]*I
+        E.add_(y1s, alpha=c[11]).add_(y0s, alpha=c[12]).add_(A2, alpha=c[13]).add_(A, alpha=c[14])
+        add_identity_(E, c[15])
+        nProd = 3
+
+    return E, nProd
+                   
